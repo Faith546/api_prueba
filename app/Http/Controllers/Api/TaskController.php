@@ -4,10 +4,22 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreTaskRequest;
+use App\Http\Resources\TaskResource;
 use App\Models\Task;
+use Illuminate\Routing\Controllers\HasMiddleware;
+use Illuminate\Routing\Controllers\Middleware;
 
-class TaskController extends Controller
+class TaskController extends Controller implements HasMiddleware
 {
+    public static function middleware(): array
+    {
+        return [
+            new Middleware('auth:api', except: ['index','show']), //se aplica el middleware auth:api a todas las rutas excepto a las rutas index y show
+        ];
+    }
+
+
+
     /**
      * Display a listing of the resource.
      */
@@ -18,7 +30,8 @@ class TaskController extends Controller
         */
 
         $tasks = Task::getOrPaginate(); //se obtienen las tareas paginadas acorde al parametro perPage que se envia desde el cliente   
-        return response()->json($tasks);  //se retorna un json con todas las tareas
+        //return response()->json($tasks);  //se retorna un json con todas las tareas
+        return TaskResource::collection($tasks); //se retorna un json con todas las tareas usando el recurso TaskResource
     }
 
     /**
@@ -32,8 +45,12 @@ class TaskController extends Controller
             'user_id' => ['required','exists:users,id'],
         ]); */
 
-        $task = Task::create($request->all()); //se crea una nueva tarea con los datos que se envian desde el cliente
-        return response()->json($task, 201); //se retorna un json con la tarea creada y el código 201 que indica que se creo un recurso
+        $data = $request->all(); //se obtienen todos los datos que se envian desde el cliente
+        $data['user_id'] = auth('api')->id(); //se obtiene el id del usuario autenticado y se asigna a la tarea
+
+        $task = Task::create($data); //se crea una nueva tarea con los datos que se envian desde el cliente
+        //return response()->json($task, 201); //se retorna un json con la tarea creada y el código 201 que indica que se creo un recurso
+        return TaskResource::make($task); //se retorna un json con la tarea creada usando el recurso TaskResource
     }
 
     /**
@@ -42,7 +59,8 @@ class TaskController extends Controller
     public function show(Task $task)
     {
         //$task = Task::find($task); //se busca la tarea por su id; si se bindea el modelo en la ruta, se puede buscar directamente por el modelo
-        return response()->json($task); //se retorna un json con la tarea encontrada
+        //return response()->json($task); //se retorna un json con la tarea encontrada
+        return TaskResource::make($task); //se retorna un json con la tarea encontrada usando el recurso TaskResource
     }
 
     /**
@@ -57,7 +75,8 @@ class TaskController extends Controller
 
         //$task = Task::find($task);
         $task->update($request->all()); //se actualiza la tarea con los datos que se envian desde el cliente
-        return response()->json($task); //se retorna un json con la tarea actualizada
+       // return response()->json($task); //se retorna un json con la tarea actualizada
+        return TaskResource::make($task); //se retorna un json con la tarea actualizada usando el recurso TaskResource
     }
 
     /**
